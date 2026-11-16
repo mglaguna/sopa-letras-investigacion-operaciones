@@ -1,0 +1,629 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Sopa de letras | Investigación de Operaciones</title>
+
+<style>
+:root {
+  font-family: Arial, sans-serif;
+  color: #123052;
+  background: #f2f5fa;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+header {
+  background: #082f57;
+  color: white;
+  text-align: center;
+  padding: 24px 15px;
+  border-bottom: 5px solid #e5b640;
+}
+
+h1 { margin: 8px 0; }
+
+main {
+  max-width: 1050px;
+  margin: auto;
+  padding: 15px;
+}
+
+.panel {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid #d6e0eb;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: 2px;
+  touch-action: none;
+  user-select: none;
+}
+
+.cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7eff9;
+  border: 1px solid #bacde2;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: clamp(10px, 2.4vw, 17px);
+  cursor: pointer;
+}
+
+.cell.active {
+  background: #f7d777;
+}
+
+.cell.found {
+  background: #bce9d7;
+  color: #07543d;
+}
+
+.word {
+  padding: 9px 0;
+  border-bottom: 1px solid #e2e7ef;
+}
+
+.word.done {
+  color: #17644c;
+  text-decoration: line-through;
+}
+
+.word strong { display: block; }
+
+.word small {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+button {
+  background: #0a477d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 14px;
+  margin: 5px 5px 5px 0;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid #d5a21b;
+}
+
+input {
+  padding: 12px;
+  font-size: 16px;
+  max-width: 280px;
+  width: 100%;
+}
+
+.status {
+  font-weight: bold;
+  margin: 12px 0;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  color: #526477;
+}
+
+@media (max-width: 740px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel { padding: 12px; }
+
+  .board { gap: 1px; }
+
+  .cell {
+    font-size: clamp(9px, 3vw, 14px);
+    border-radius: 2px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <p>Ingeniería Química · Investigación de Operaciones</p>
+  <h1>Sopa de letras: Programación lineal</h1>
+  <p>Diez conceptos fundamentales de optimización</p>
+</header>
+
+<main>
+
+<section class="panel">
+  <h2>Instrucciones</h2>
+
+  <p>
+    Encuentra las diez palabras relacionadas con
+    programación lineal. Selecciona las letras
+    deslizando el dedo o arrastrando el cursor.
+    También puedes tocar la primera y última
+    letra de cada palabra.
+  </p>
+
+  <p>
+    Las palabras pueden aparecer horizontal,
+    vertical o diagonalmente, en ambos sentidos.
+  </p>
+
+  <div class="status" id="progress" aria-live="polite">
+    0 de 10 palabras encontradas
+  </div>
+
+  <button onclick="newGame()">Nueva sopa de letras</button>
+  <button onclick="showAnswers()">Mostrar soluciones</button>
+</section>
+
+<div class="layout">
+
+<section class="panel">
+  <h2>Encuentra las palabras</h2>
+
+  <div id="board" class="board"
+       aria-label="Cuadrícula de sopa de letras">
+  </div>
+
+  <p id="message" aria-live="polite"></p>
+</section>
+
+<section class="panel">
+  <h2>Conceptos y definiciones</h2>
+  <div id="wordList"></div>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>Actividad de aplicación</h2>
+
+  <p>
+    Una planta química produce dos productos:
+    A y B.
+  </p>
+
+  <p>
+    El producto A genera una utilidad de $40
+    por unidad y el producto B genera $30.
+  </p>
+
+  <p>
+    Si se producen 20 unidades de A y
+    60 unidades de B,
+    ¿cuál es la utilidad total?
+  </p>
+
+  <label for="answer">
+    <strong>Utilidad total ($):</strong>
+  </label>
+
+  <p>
+    <input type="number" id="answer"
+           placeholder="Escribe tu respuesta">
+  </p>
+
+  <button onclick="checkAnswer()">
+    Comprobar respuesta
+  </button>
+
+  <p id="feedback" aria-live="polite"></p>
+
+  <details>
+    <summary>Consultar explicación</summary>
+    <p>
+      Z = 40(20) + 30(60) = $2,600.
+    </p>
+    <p>
+      Este ejemplo utiliza datos hipotéticos
+      para fines didácticos.
+    </p>
+  </details>
+</section>
+
+</main>
+
+<footer>
+  Recurso educativo · Investigación de Operaciones
+</footer>
+
+<script>
+const terms = [
+  ["OPTIMIZACION",
+   "Proceso de encontrar la mejor solución factible."],
+
+  ["VARIABLES",
+   "Cantidades cuyos valores debemos determinar."],
+
+  ["OBJETIVO",
+   "Expresión matemática que se maximiza o minimiza."],
+
+  ["RESTRICCION",
+   "Condición que limita las decisiones."],
+
+  ["RECURSOS",
+   "Materiales, tiempo o capacidades disponibles."],
+
+  ["FACTIBILIDAD",
+   "Cumplimiento de todas las restricciones."],
+
+  ["PRODUCCION",
+   "Cantidad fabricada de un producto."],
+
+  ["UTILIDAD",
+   "Beneficio económico de la producción."],
+
+  ["MODELO",
+   "Representación matemática de un problema."],
+
+  ["SOLUCION",
+   "Conjunto de valores de las variables de decisión."]
+];
+
+const SIZE = 15;
+
+const directions = [
+  [1, 0], [0, 1], [1, 1], [1, -1],
+  [-1, 0], [0, -1], [-1, -1], [-1, 1]
+];
+
+let grid = [];
+let positions = {};
+let found = new Set();
+let startCell = null;
+let dragging = false;
+
+function generateGrid() {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    let g = Array.from(
+      {length: SIZE},
+      () => Array(SIZE).fill("")
+    );
+
+    let pos = {};
+    let success = true;
+
+    const ordered = [...terms].sort(
+      (a, b) => b[0].length - a[0].length
+    );
+
+    for (const [word] of ordered) {
+      let options = [];
+
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          for (const [dr, dc] of directions) {
+            const cells = Array.from(
+              {length: word.length},
+              (_, i) => [r + i * dr, c + i * dc]
+            );
+
+            const valid = cells.every(([y, x], i) =>
+              y >= 0 && y < SIZE &&
+              x >= 0 && x < SIZE &&
+              (!g[y][x] || g[y][x] === word[i])
+            );
+
+            if (valid) options.push(cells);
+          }
+        }
+      }
+
+      if (!options.length) {
+        success = false;
+        break;
+      }
+
+      const chosen = options[
+        Math.floor(Math.random() * options.length)
+      ];
+
+      pos[word] = chosen;
+
+      chosen.forEach(([y, x], i) => {
+        g[y][x] = word[i];
+      });
+    }
+
+    if (success) {
+      const alphabet = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (!g[r][c]) {
+            g[r][c] = alphabet[
+              Math.floor(Math.random() * alphabet.length)
+            ];
+          }
+        }
+      }
+
+      grid = g;
+      positions = pos;
+      return;
+    }
+  }
+
+  throw new Error("No fue posible generar la cuadrícula.");
+}
+
+function pathBetween(a, b) {
+  const dy = b[0] - a[0];
+  const dx = b[1] - a[1];
+
+  const length = Math.max(Math.abs(dy), Math.abs(dx));
+
+  if (
+    length === 0 ||
+    !(dy === 0 || dx === 0 ||
+      Math.abs(dy) === Math.abs(dx))
+  ) return [];
+
+  return Array.from(
+    {length: length + 1},
+    (_, i) => [
+      a[0] + i * Math.sign(dy),
+      a[1] + i * Math.sign(dx)
+    ]
+  );
+}
+
+function samePath(a, b) {
+  return a.length === b.length &&
+    a.every((p, i) =>
+      p[0] === b[i][0] && p[1] === b[i][1]
+    );
+}
+
+function paint(selected = []) {
+  const active = new Set(
+    selected.map(p => p.join(","))
+  );
+
+  const completed = new Set(
+    [...found].flatMap(word =>
+      positions[word].map(p => p.join(","))
+    )
+  );
+
+  document.querySelectorAll(".cell").forEach(el => {
+    const key = el.dataset.r + "," + el.dataset.c;
+
+    el.classList.toggle("active", active.has(key));
+    el.classList.toggle("found", completed.has(key));
+  });
+}
+
+function updateProgress() {
+  document.getElementById("progress").textContent =
+    found.size + " de " + terms.length +
+    " palabras encontradas";
+
+  document.querySelectorAll(".word").forEach(el => {
+    el.classList.toggle(
+      "done",
+      found.has(el.dataset.word)
+    );
+  });
+
+  if (found.size === terms.length) {
+    document.getElementById("message").textContent =
+      "¡Excelente! Encontraste las diez palabras.";
+  }
+}
+
+function selectWord(a, b) {
+  const path = pathBetween(a, b);
+
+  if (!path.length) {
+    document.getElementById("message").textContent =
+      "Selecciona una línea recta.";
+    paint();
+    return;
+  }
+
+  const match = terms.find(([word]) =>
+    !found.has(word) &&
+    (
+      samePath(path, positions[word]) ||
+      samePath([...path].reverse(), positions[word])
+    )
+  );
+
+  if (match) {
+    found.add(match[0]);
+
+    document.getElementById("message").textContent =
+      "Encontraste: " + match[0];
+
+    updateProgress();
+  } else {
+    document.getElementById("message").textContent =
+      "Intenta con otra selección.";
+  }
+
+  paint();
+}
+
+function getCell(event) {
+  const el = document.elementFromPoint(
+    event.clientX,
+    event.clientY
+  );
+
+  if (!el || !el.classList.contains("cell")) {
+    return null;
+  }
+
+  return [
+    Number(el.dataset.r),
+    Number(el.dataset.c)
+  ];
+}
+
+function renderBoard() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement("div");
+
+      cell.className = "cell";
+      cell.textContent = grid[r][c];
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      board.appendChild(cell);
+    }
+  }
+}
+
+function renderWords() {
+  const list = document.getElementById("wordList");
+  list.innerHTML = "";
+
+  terms.forEach(([word, definition]) => {
+    const item = document.createElement("div");
+    item.className = "word";
+    item.dataset.word = word;
+
+    const title = document.createElement("strong");
+    title.textContent = word;
+
+    const description = document.createElement("small");
+    description.textContent = definition;
+
+    const button = document.createElement("button");
+    button.textContent = "Marcar palabra";
+
+    button.addEventListener("click", () => {
+      found.add(word);
+      paint();
+      updateProgress();
+    });
+
+    item.append(title, description, button);
+    list.appendChild(item);
+  });
+}
+
+function newGame() {
+  generateGrid();
+  found = new Set();
+  startCell = null;
+  dragging = false;
+
+  renderBoard();
+  renderWords();
+  updateProgress();
+
+  document.getElementById("message").textContent = "";
+}
+
+function showAnswers() {
+  terms.forEach(([word]) => found.add(word));
+
+  paint();
+  updateProgress();
+
+  document.getElementById("message").textContent =
+    "Soluciones mostradas.";
+}
+
+function checkAnswer() {
+  const value = document.getElementById("answer").value;
+  const feedback = document.getElementById("feedback");
+
+  if (value === "") {
+    feedback.textContent = "Escribe una respuesta.";
+  } else if (Number(value) === 2600) {
+    feedback.textContent =
+      "¡Correcto! La utilidad total es $2,600.";
+  } else {
+    feedback.textContent =
+      "Revisa el cálculo: multiplica las unidades " +
+      "de cada producto por su utilidad y suma.";
+  }
+}
+
+const board = document.getElementById("board");
+
+board.addEventListener("pointerdown", event => {
+  const cell = getCell(event);
+  if (!cell) return;
+
+  event.preventDefault();
+
+  if (startCell) {
+    selectWord(startCell, cell);
+    startCell = null;
+    dragging = false;
+  } else {
+    startCell = cell;
+    dragging = true;
+    paint([cell]);
+  }
+
+  board.setPointerCapture(event.pointerId);
+});
+
+board.addEventListener("pointermove", event => {
+  if (!dragging || !startCell) return;
+
+  const cell = getCell(event);
+
+  if (cell) {
+    paint(pathBetween(startCell, cell));
+  }
+});
+
+board.addEventListener("pointerup", event => {
+  if (!dragging) return;
+
+  const cell = getCell(event);
+  dragging = false;
+
+  if (
+    cell &&
+    (
+      cell[0] !== startCell[0] ||
+      cell[1] !== startCell[1]
+    )
+  ) {
+    selectWord(startCell, cell);
+    startCell = null;
+  } else {
+    paint([startCell]);
+  }
+});
+
+newGame();
+</script>
+
+</body>
+</html>
